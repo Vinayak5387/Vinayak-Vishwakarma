@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://vinayak5387.github.io/Vinayak-Vishwakarma/sitemap.xml
+Sitemap: https://vinayakvishwakarma.site/sitemap.xml
