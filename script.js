@@ -45,6 +45,8 @@ document.getElementById('web-grid').innerHTML = SITES.map(([url, name, kind]) =>
   </div>`).join('');
 
 // ── Playhead: the page is a timeline (24 fps, 2:30 long) ──
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const reel = document.querySelector('.reel');
 const tc = document.getElementById('timecode');
 const ph = document.getElementById('playhead');
 let ticking = false;
@@ -54,6 +56,10 @@ function updatePlayhead() {
   ph.style.setProperty('--p', p);
   const f = Math.round(p * 150 * 24), pad = n => String(n).padStart(2, '0');
   tc.textContent = `${pad(Math.floor(f / 86400))}:${pad(Math.floor(f / 1440) % 60)}:${pad(Math.floor(f / 24) % 60)}:${pad(f % 24)}`;
+  if (reel && !reduce) {
+    const r = reel.getBoundingClientRect();
+    reel.style.setProperty('--ry', Math.max(-30, Math.min(30, -(r.top + r.height / 2 - innerHeight / 2) * 0.06)) + 'px');
+  }
   ticking = false;
 }
 addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(updatePlayhead); } }, { passive: true });
@@ -118,3 +124,45 @@ document.addEventListener('keydown', e => {
   if (vModal.classList.contains('open')) closeVideo();
   if (wModal.classList.contains('open')) closeWeb();
 });
+
+// ── Scroll reveals ──
+document.querySelectorAll('.section-title').forEach(t => {
+  t.innerHTML = '<span class="ln"><span>' + t.textContent + '</span></span>';
+});
+document.querySelectorAll('.section-title, .contact-title').forEach(t => t.setAttribute('data-t', ''));
+document.querySelectorAll('.section-sub, .service, .track-head, .vcard, .web-card, .contact-btns').forEach(el => {
+  const i = [...el.parentElement.children].indexOf(el);
+  el.setAttribute('data-r', '');
+  el.style.setProperty('--d', (i % 3) * 0.1 + 's');
+});
+const rio = new IntersectionObserver(es => es.forEach(e => {
+  if (e.isIntersecting) { e.target.classList.add('in'); rio.unobserve(e.target); }
+}), { threshold: 0.15, rootMargin: '0px 0px -6% 0px' });
+document.querySelectorAll('[data-r], [data-t]').forEach(el => rio.observe(el));
+
+// ── Pointer effects (mouse only) ──
+if (matchMedia('(hover: hover) and (pointer: fine)').matches && !reduce) {
+  const cur = document.getElementById('cursor'), label = cur.firstElementChild;
+  let x = 0, y = 0, cx = 0, cy = 0;
+  addEventListener('mousemove', e => { x = e.clientX; y = e.clientY; }, { passive: true });
+  (function loop() {
+    cx += (x - cx) * 0.18; cy += (y - cy) * 0.18;
+    cur.style.transform = `translate3d(${cx}px, ${cy}px, 0)`;
+    requestAnimationFrame(loop);
+  })();
+  document.addEventListener('mouseover', e => {
+    const t = e.target.closest('[data-video-id], .web-card');
+    cur.classList.toggle('on', !!t);
+    document.documentElement.classList.toggle('has-cursor', !!t);
+    if (t) label.textContent = t.dataset.videoId ? 'Play' : 'Open';
+  });
+  document.addEventListener('mouseleave', () => { cur.classList.remove('on'); document.documentElement.classList.remove('has-cursor'); });
+
+  document.querySelectorAll('.btn').forEach(b => {
+    b.addEventListener('mousemove', e => {
+      const r = b.getBoundingClientRect();
+      b.style.transform = `translate(${(e.clientX - r.left - r.width / 2) * 0.2}px, ${(e.clientY - r.top - r.height / 2) * 0.3}px)`;
+    });
+    b.addEventListener('mouseleave', () => { b.style.transform = ''; });
+  });
+}
