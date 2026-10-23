@@ -1,139 +1,120 @@
-// ── Sticky nav active link highlight on scroll ──
-const sections = document.querySelectorAll('section[id]');
-const navLinks = document.querySelectorAll('.nav-links a');
+// ── Content ──
+const VIDEOS = {
+  'Music videos': [
+    ['WAi1iuvC5qc', 'Geeta Rabari — Zankaar 3.0', 'Music video'],
+    ['MABDpIhi7hE', 'Dhurandhar', 'Music video'],
+    ['YQvAjmC0sN4', 'Jaysinh Gadhavi', 'Music video'],
+    ['EHrLyw7lyMM', 'Tu Hain To (Piano)', 'Music video']
+  ],
+  'Wedding': [
+    ['YKbzrXE32sU', 'Wedding Teaser 2024', 'Wedding'],
+    ['9PY9ueEI-oA', 'Wedding Highlight', 'Wedding']
+  ],
+  'STIHL India': [
+    ['CYaJiWAOb_k', 'STIHL India', 'Brand commercial'],
+    ['Fey9uCoy6NQ', 'Vadodara — 1st Farmer', 'Brand documentary'],
+    ['YNzpb0z7-YE', 'STIHL — Second Final', 'Brand commercial'],
+    ['Ptv-AFnToWU', 'STIHL — 3rd Farmer', 'Brand documentary']
+  ]
+};
 
-const obs = new IntersectionObserver((entries) => {
-  entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      navLinks.forEach(l => l.style.color = '');
-      const active = document.querySelector(`.nav-links a[href="#${entry.target.id}"]`);
-      if (active) active.style.color = '#1d1d1f';
-    }
-  });
-}, { threshold: 0.4 });
+const SITES = [
+  ['https://sarwastudio.com', 'Sarwa Studio', 'Agency brand website'],
+  ['https://khalnayakpower.github.io/rashi-marketing/', 'Rashi Marketing', 'Business landing page'],
+  ['https://www.potterpumps.com/', 'Potter Pumps', 'Business website']
+];
 
-sections.forEach(s => obs.observe(s));
+const PLAY = '<span class="play-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="7,4 20,12 7,20"/></svg></span>';
 
-// ── Video Modal ──
-const modal      = document.getElementById('video-modal');
-const iframe     = document.getElementById('modal-iframe');
-const closeBtn   = document.getElementById('modal-close');
-const backdrop   = document.getElementById('modal-backdrop');
+document.getElementById('video-tracks').innerHTML = Object.entries(VIDEOS).map(([track, list]) => `
+  <div class="track-head">${track}<small>${list.length} ${list.length > 1 ? 'videos' : 'video'}</small></div>
+  <div class="video-grid">${list.map(([id, title, kind]) => `
+    <div class="vcard video-card" data-video-id="${id}" role="button" tabindex="0">
+      <div class="thumb"><img src="https://img.youtube.com/vi/${id}/hqdefault.jpg" alt="${title}" loading="lazy" />${PLAY}</div>
+      <strong>${title}</strong><span>${kind}</span>
+    </div>`).join('')}
+  </div>`).join('');
 
-function openModal(videoId) {
-  iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0`;
-  modal.classList.add('open');
+document.getElementById('web-grid').innerHTML = SITES.map(([url, name, kind]) => `
+  <div class="web-card" data-url="${url}" role="button" tabindex="0" aria-label="Preview ${name}">
+    <div class="browser">
+      <div class="browser-bar"><span class="browser-dots"><i></i><i></i><i></i></span><span class="browser-url">${url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}</span></div>
+      <div class="browser-view"><img src="https://s0.wp.com/mshots/v1/${url}?w=1280&h=720" alt="${name} preview" loading="lazy" /></div>
+    </div>
+    <div class="web-meta"><strong>${name}</strong><span>${kind}</span></div>
+  </div>`).join('');
+
+// ── Playhead: the page is a timeline (24 fps, 2:30 long) ──
+const tc = document.getElementById('timecode');
+const ph = document.getElementById('playhead');
+let ticking = false;
+function updatePlayhead() {
+  const max = document.documentElement.scrollHeight - innerHeight;
+  const p = max > 0 ? Math.min(1, Math.max(0, scrollY / max)) : 0;
+  ph.style.setProperty('--p', p);
+  const f = Math.round(p * 150 * 24), pad = n => String(n).padStart(2, '0');
+  tc.textContent = `${pad(Math.floor(f / 86400))}:${pad(Math.floor(f / 1440) % 60)}:${pad(Math.floor(f / 24) % 60)}:${pad(f % 24)}`;
+  ticking = false;
+}
+addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(updatePlayhead); } }, { passive: true });
+addEventListener('resize', updatePlayhead);
+updatePlayhead();
+
+// ── Active nav link ──
+const links = document.querySelectorAll('.nav-links a');
+const io = new IntersectionObserver(es => es.forEach(e => {
+  if (e.isIntersecting) links.forEach(l => l.classList.toggle('on', l.getAttribute('href') === '#' + e.target.id));
+}), { rootMargin: '-40% 0px -55% 0px' });
+document.querySelectorAll('section[id]').forEach(s => io.observe(s));
+
+// ── Helpers ──
+const onActivate = (el, fn) => {
+  el.addEventListener('click', fn);
+  el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); } });
+};
+
+// ── Video modal ──
+const vModal = document.getElementById('video-modal');
+const vFrame = document.getElementById('modal-iframe');
+
+function openVideo(id) {
+  vFrame.src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`;
+  vModal.classList.add('open');
   document.body.style.overflow = 'hidden';
 }
-
-function closeModal() {
-  modal.classList.remove('open');
-  setTimeout(() => { iframe.src = ''; }, 300);
+function closeVideo() {
+  vModal.classList.remove('open');
+  setTimeout(() => { vFrame.src = ''; }, 300);
   document.body.style.overflow = '';
 }
+document.querySelectorAll('.video-card[data-video-id]').forEach(c => onActivate(c, () => openVideo(c.dataset.videoId)));
+document.getElementById('modal-close').addEventListener('click', closeVideo);
+document.getElementById('modal-backdrop').addEventListener('click', closeVideo);
 
-document.querySelectorAll('.video-card[data-video-id]').forEach(card => {
-  card.addEventListener('click', () => openModal(card.dataset.videoId));
-  card.addEventListener('keydown', e => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      openModal(card.dataset.videoId);
-    }
-  });
+// ── Web preview modal ──
+const wModal = document.getElementById('web-modal');
+const wFrame = document.getElementById('web-modal-iframe');
+
+function openWeb(url) {
+  document.getElementById('web-modal-url-text').textContent = url.replace(/^https?:\/\//, '');
+  document.getElementById('web-modal-newtab').href = url;
+  wModal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => { wFrame.src = url; }, 80);
+}
+function closeWeb() {
+  wModal.classList.remove('open');
+  setTimeout(() => { wFrame.src = ''; }, 300);
+  document.body.style.overflow = '';
+}
+document.querySelectorAll('.web-card[data-url]').forEach(c => onActivate(c, () => openWeb(c.dataset.url)));
+['web-modal-close', 'web-modal-close-dot', 'web-modal-backdrop'].forEach(id => document.getElementById(id).addEventListener('click', closeWeb));
+document.getElementById('web-modal-refresh').addEventListener('click', () => {
+  const s = wFrame.src; wFrame.src = ''; setTimeout(() => { wFrame.src = s; }, 60);
 });
-
-closeBtn.addEventListener('click', closeModal);
-backdrop.addEventListener('click', closeModal);
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') {
-    if (modal.classList.contains('open'))    closeModal();
-    if (webModal.classList.contains('open')) closeWebModal();
-  }
+  if (e.key !== 'Escape') return;
+  if (vModal.classList.contains('open')) closeVideo();
+  if (wModal.classList.contains('open')) closeWeb();
 });
-
-// ── Web Preview Modal ──
-const webModal        = document.getElementById('web-modal');
-const webIframe       = document.getElementById('web-modal-iframe');
-const webUrlText      = document.getElementById('web-modal-url-text');
-const webNewtab       = document.getElementById('web-modal-newtab');
-const webRefresh      = document.getElementById('web-modal-refresh');
-const webClose        = document.getElementById('web-modal-close');
-const webCloseDot     = document.getElementById('web-modal-close-dot');
-const webBackdrop     = document.getElementById('web-modal-backdrop');
-const webBlocked      = document.getElementById('web-modal-blocked');
-const webBlockedLink  = document.getElementById('web-blocked-link');
-
-let blockCheckTimer = null;
-
-function openWebModal(url, title) {
-  // Reset state
-  webBlocked.style.display = 'none';
-  webIframe.style.display  = 'block';
-  webIframe.src            = '';
-
-  // Populate chrome bar
-  webUrlText.textContent = url.replace(/^https?:\/\//, '');
-  webNewtab.href         = url;
-  webBlockedLink.href    = url;
-
-  webModal.classList.add('open');
-  document.body.style.overflow = 'hidden';
-
-  // Small delay then load iframe (avoids flash)
-  setTimeout(() => { webIframe.src = url; }, 80);
-
-  // Detect X-Frame-Options block after 4 s
-  clearTimeout(blockCheckTimer);
-  blockCheckTimer = setTimeout(() => {
-    try {
-      // If same-origin, accessing this won't throw
-      const doc = webIframe.contentDocument || webIframe.contentWindow?.document;
-      // blank page or about:blank means blocked
-      if (!doc || doc.URL === 'about:blank' || doc.body?.innerHTML === '') {
-        showBlocked(url);
-      }
-    } catch (e) {
-      // Cross-origin throw = likely blocked, show fallback
-      showBlocked(url);
-    }
-  }, 4000);
-}
-
-function showBlocked(url) {
-  webIframe.style.display = 'none';
-  webBlocked.style.display = 'flex';
-  webBlockedLink.href = url;
-}
-
-function closeWebModal() {
-  webModal.classList.remove('open');
-  clearTimeout(blockCheckTimer);
-  setTimeout(() => {
-    webIframe.src = '';
-    webBlocked.style.display = 'none';
-    webIframe.style.display  = 'block';
-  }, 300);
-  document.body.style.overflow = '';
-}
-
-// Wire up web cards
-document.querySelectorAll('.web-card[data-url]').forEach(card => {
-  const open = () => openWebModal(card.dataset.url, card.dataset.title);
-  card.addEventListener('click', open);
-  card.addEventListener('keydown', e => {
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
-  });
-});
-
-webClose.addEventListener('click', closeWebModal);
-webCloseDot.addEventListener('click', closeWebModal);
-webBackdrop.addEventListener('click', closeWebModal);
-webRefresh.addEventListener('click', () => {
-  const src = webIframe.src;
-  webIframe.src = '';
-  webBlocked.style.display = 'none';
-  webIframe.style.display  = 'block';
-  setTimeout(() => { webIframe.src = src; }, 60);
-});
-
