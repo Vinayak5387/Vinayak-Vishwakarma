@@ -19,9 +19,9 @@ const VIDEOS = {
 };
 
 const SITES = [
-  ['https://sarwastudio.com', 'Sarwa Studio', 'Agency brand website'],
   ['https://khalnayakpower.github.io/rashi-marketing/', 'Rashi Marketing', 'Business landing page'],
-  ['https://www.potterpumps.com/', 'Potter Pumps', 'Business website']
+  ['https://mail-go-phi.vercel.app', 'Mail Go', 'Website'],
+  ['https://www.fitfriendly.in/', 'FitFriendly', 'Website']
 ];
 
 const PLAY = '<span class="play-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="7,4 20,12 7,20"/></svg></span>';
